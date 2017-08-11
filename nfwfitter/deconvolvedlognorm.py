@@ -12,7 +12,7 @@ import deconvolvedlognormtools as dlntools
 import varcontainer
 import pymc_mymcmc_adapter as pma
 import scipy.stats
-import nfwutils, nfwfit
+import nfwutils, fitrunner
 
 
 ########################
@@ -46,19 +46,32 @@ def MCMCReader(inputfile, halo, delta, truth, thin=1, cprior = None):
 
 def PDFReader(pdffile, halo, delta, truth, model=None):
 
+    
     with open(pdffile, 'rb') as input:
-        masses, pdfs = cPickle.load(input)
+        data = cPickle.load(input)
 
-    if type(pdfs) != dict:
-        if delta != 200:
-            print 'Skipping ', filebase
-            raise BadPDFException(filebase)
-        pdfs = {200:pdfs}  #historical reasons. If it isn't a pdf, it was computed as 200.
+    if isinstance(data, dict):
+        #dealing with outputfiles redefined in Jan 2017
+        pdfs = data
+        masses, pdf = pdfs[delta]        
 
-    if delta in pdfs:
-        pdf = pdfs[delta]
     else:
-        pdf = nfwfit.convertLikelihoodScan(model, delta, masses, pdfs[200], truth['redshift'])
+        #files defined before Jan 2017
+        masses, pdfs = data
+
+        if type(pdfs) != dict:
+            if delta != 200:
+                print 'Skipping ', filebase
+                raise BadPDFException(filebase)
+            pdfs = {200:pdfs}  #historical reasons. If it isn't a pdf, it was computed as 200.
+
+        if delta in pdfs:
+            pdf = pdfs[delta]
+        else:
+            pdf = nfwfit.convertLikelihoodScan(model, delta, masses, pdfs[200], truth['redshift'])
+
+
+
 
     if np.any(np.logical_not(np.isfinite(pdf))):
         raise BadPDFException(filebase)

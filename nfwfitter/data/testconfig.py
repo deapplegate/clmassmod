@@ -28,15 +28,17 @@ binnoiser = binnoiser.NoBinNoise()
 import nfwfitter.readMXXL as readMXXL
 simreader=readMXXL.MXXLSimReader()
 
-import nfwfitter.nfwfit as nfwfit
-model=nfwfit.NFW_MC_Model()
+import nfwfitter.nfwmodel as nfwmodel
+base_massmodel=nfwmodel.NFW_Model()
+import nfwfitter.massmodel as massmodel
+massmodel=massmodel.MC_Model()
 
 import nfwfitter.colossusMassCon as colossusMassCon
 massconRelation=colossusMassCon.ColossusMC()
 colossusmcname='diemer15'
 
-import nfwfitter.nfwfit as nfwfit
-fitter=nfwfit.PDFScanner()
+import nfwfitter.fitrunner as fitrunner
+fitter=fitrunner.PDFScanner()
 
 
 profileMin=.5

@@ -3,7 +3,7 @@
 
 import glob, cPickle, sys, os, re
 import numpy as np
-import nfwutils, nfwfit
+import nfwutils, fitrunner
 
 ###########################
 

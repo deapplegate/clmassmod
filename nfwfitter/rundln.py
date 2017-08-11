@@ -6,7 +6,6 @@
 import sys, re
 import random
 import deconvolvedlognorm as dln
-import nfwfit
 import nfwutils
 import numpy as np
 import pymc

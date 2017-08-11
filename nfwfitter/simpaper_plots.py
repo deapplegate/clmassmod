@@ -10,7 +10,7 @@ import cPickle
 
 import nfwnoise
 import nfwutils
-import nfwfit
+import fitrunner
 import varcontainer
 #import publication_plots as pp
 import basicMassCon
@@ -19,7 +19,7 @@ import pymc
 import fitmodel
 import confidenceinterval as ci
 import plotsimdistros as psd
-
+import rundln
 
 #####
 
@@ -75,16 +75,13 @@ def likelihoodPlots():
 
         #calcualte pdf for duffy
 
-        config = varcontainer.VarContainer()
-        config.massconmodule = 'basicMassCon'
-
-        config.massconrelation = 'Duffy'
-        likelihood = nfwnoise.Likelihood(config)
+        likelihood = nfwnoise.Likelihood(None)
         likelihood.bindData(r_mpc, g_truth, g_err, beta_s, zcluster)
+        c200s = [c_duffy(m200*nfwutils.global_cosmology.h, zcluster, 200.) for m200 in m200s]
 
 
 
-        duffy_logpdf = np.array([likelihood(m200) for m200 in m200s])
+        duffy_logpdf = np.array([likelihood(m200, c200) for m200, c200 in zip(m200s, c200s)])
         duffy_pdf = np.exp(duffy_logpdf - np.max(duffy_logpdf))
         duffy_pdf = duffy_pdf / np.trapz(duffy_pdf, m200s)
 
@@ -791,6 +788,165 @@ def compareMiscentering_SZRedshift():
 #############
 
 
+def compareInnerFitRadiusSimAnalytic():
+    '''Compare bias levels when MC and centering as good as can be, for varying inner radial fit limits'''
+
+    mxxlsnap=54
+
+    configtemplate = 'general-diemer15-r{}-xrayNONE-n2_4-nov2016'
+    radialrange = 6
+    config = configtemplate.format(radialrange)
+
+    chaindirs = ['{}/rundlns/mxxlsnap{}/{}'.format(outputdir, mxxlsnap, config),
+                 '{}/rundlns/diemeranalytic/mxxlsnap{}/{}'.format(outputdir, mxxlsnap, config)]
+    
+
+    labels = ['Measured', 'Analytic']
+
+    xoffsets = [0.99, 1.01]
+
+    outputname = 'compare_nfw_analytic'
+
+    compareSimPlot(outputname, chaindirs, labels, xoffsets, deltas=[200], metalabel='0.5-2.5 Mpc Diemer15')
+
+
+
+
+#############
+
+
+def compareInnerFitRadiusAnalytic():
+    '''Compare bias levels when MC and centering as good as can be, for varying inner radial fit limits'''
+
+    mxxlsnap=54
+
+    configtemplate = 'general-diemer15-r{}-xrayNONE-n2_4-nov2016'
+    radialranges = [19, 3, 6, 9]
+    configs = [configtemplate.format(r) for r in radialranges]
+
+    chaindirs = ['{}/rundlns/diemeranalytic/mxxlsnap{}/{}'.format(outputdir, mxxlsnap, config) for config in configs]
+    
+
+    labels = ['100kpc', '250kpc', '500kpc', '750kpc']
+
+    xoffsets = [0.97, 0.99, 1.01, 1.03]
+
+    outputname = 'compare_analytic_innerfitrange'
+
+    compareSimPlot(outputname, chaindirs, labels, xoffsets, deltas=[200])
+
+
+    ##########
 
 
     
+def compareOuterFitRadiusAnalytic():
+    '''Compare bias levels when MC and centering as good as can be, for varying inner radial fit limits'''
+
+    mxxlsnap=54
+
+    configtemplate = 'general-diemer15-r{}-xrayNONE-n2_4-nov2016'
+    radialranges = [5, 20, 6, 7]
+
+    configs = [configtemplate.format(r) for r in radialranges]
+
+    chaindirs = ['{}/rundlns/diemeranalytic/mxxlsnap{}/{}'.format(outputdir, mxxlsnap, config) for config in configs]
+    
+    labels = ['1.5 Mpc', '2.0 Mpc', '2.5 Mpc', '3.0 Mpc']
+
+
+
+    xoffsets = [0.97, 0.99, 1.01, 1.03]
+
+    outputname = 'compare_analytic_outerfitrange'
+
+    compareSimPlot(outputname, chaindirs, labels, xoffsets, deltas=[200])
+
+
+    ##########
+
+
+def plotBiasSensitivityConcentration():
+    '''Plot sigma_m due to bias uncertainty from concentration versus fit radius'''
+
+
+    sim='mxxlsnap54'
+    deltas = [200, 500, 2500]
+    outputname = 'bias_sensitivity_concen'
+    radialsets = [[19,3,6,9],[5, 10]]
+    innerfit_locs = [[100,250, 500, 750], [500, 750]]
+
+    fracsig_c = 0.2
+   
+    configtemplate = 'general-{}-r{}-xrayNONE-n2_4-nov2016'
+
+    for delta in deltas:
+       
+
+        binselectors = rundln.defineMassEdges(sim, delta)
+        nbins = len(binselectors)
+
+        #plot least, most massive bins, unless there is only one
+        massbins = [0,]
+        if nbins > 1:
+            massbins = [0, nbins-1]
+
+        massbin_sensitivity = []
+        massbin_labels = []
+
+        
+        for massbin in massbins:
+
+            plotsets = []
+
+            for radialset in radialsets:
+
+                fracsig_ms = np.zeros(len(radialset))
+                plotsets.append(fracsig_ms)
+
+                for fitrange_index, fitrange in enumerate(radialset):
+                    
+                    #load chains to compute db/dc(c=4)
+                    concentrations = np.array([3., 4., 5.])
+                    configs = [configtemplate.format(c, fitrange) for c in ['c{}'.format(int(c)) for c in concentrations]]
+                    chaindirs = ['{}/rundlns/{}/{}'.format(outputdir, sim, config) for config in configs]
+
+                    biases = np.zeros(3)
+
+                    for c_index, chaindir in enumerate(chaindirs):
+
+                        chainfiles = psd.gatherChainFiles(chaindir, delta, massbin)
+                        assert(len(chainfiles) == 1)
+                        chainfile = chainfiles[0]
+
+                        chain = psd.load_chains.loadChains([chainfile], trim=True)
+
+                        #check chain integrity
+                        print chainfile, len(chain['logmu'])
+                        assert(len(chain['logmu'][0,:]) >= 5000)
+
+                        split = int((chain['logmu'].shape[1] + 1000)/2.)
+                        splitlen = split - 1000
+                        c1mean = np.mean(chain['logmu'][0,1000:split])
+                        c1err = np.std(chain['logmu'][0,1000:split])
+                        c2mean = np.mean(chain['logmu'][0,split:])
+                        c2err = np.std(chain['logmu'][0,split:])
+                        assert(np.abs(c1mean - c2mean)/np.sqrt(c1err**2 + c2err**2) < 3.)
+
+
+                        mu, muerr = ci.maxDensityConfidenceRegion(np.exp(chain['logmu'][0,1000::3]))
+                        biases[c_index] = mu
+
+                    #compute sigma_M
+
+                    db_dc = (biases[2] - biases[0])/(concentrations[2] - concentrations[0])
+                    fracsig_ms[fitrange_index] = np.abs(db_dc)*fracsig_c*concentrations[1]/biases[1]
+
+        print delta, plotsets
+
+
+                               
+
+                        
+
+   

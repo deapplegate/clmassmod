@@ -22,6 +22,8 @@ setup(
     name = 'nfwfitter',
     version = '0.1',
     packages = find_packages(),
-    ext_modules = cythonize(extensions)
+    ext_modules = cythonize(extensions),
+    test_suite = 'nose.collector',
+    tests_require = ['nose']
 )
 

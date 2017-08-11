@@ -4,7 +4,7 @@
 
 
 import numpy as np
-import nfwfit, nfwutils
+import fitrunner, nfwutils
 import nfwmodeltools as tools
 import fitmodel
 import scipy.misc
@@ -12,6 +12,7 @@ import basicMassCon
 import varcontainer
 import pymc
 import pymc_mymcmc_adapter as pma
+import nfwmodel
 
 
 
@@ -287,7 +288,7 @@ class Likelihood(object):
     def __init__(self, config):
 
         self.config = config
-        self.model = nfwfit.buildModel(config)
+        self.model = nfwmodel.NFW_Model()
 
     ###
 

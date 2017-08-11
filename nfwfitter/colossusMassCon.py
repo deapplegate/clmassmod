@@ -63,7 +63,7 @@ def matchCosmo():
                                              Om0 = curcosmo.omega_m,
                                              OL0 = curcosmo.omega_l,
                                              Ob0 = 0.049,
-                                             sigma8 = 0.9,
+                                             sigma8 = 0.81,
                                              ns = 0.95))
 
 

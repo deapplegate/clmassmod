@@ -6,7 +6,9 @@ import imp, sys
 
 ############
 
+class NotConfiguredException(Exception): pass
 
+####
 
 def readConfiguration(configname):
 
